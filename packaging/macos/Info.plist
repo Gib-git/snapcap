@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>SnapCap</string>
+  <key>CFBundleDisplayName</key><string>SnapCap</string>
+  <key>CFBundleIdentifier</key><string>dev.snapcap.SnapCap</string>
+  <key>CFBundleExecutable</key><string>snapcap</string>
+  <key>CFBundleIconFile</key><string>SnapCap</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>__VERSION__</string>
+  <key>CFBundleVersion</key><string>__VERSION__</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>LSMinimumSystemVersion</key><string>13.0</string>
+  <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>SnapCap needs to see your screen to take screenshots and recordings.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>SnapCap records your microphone when you turn on microphone audio for a recording.</string>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>SnapCap records system audio when you turn on system audio for a recording.</string>
+</dict>
+</plist>

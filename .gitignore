@@ -1,0 +1,5 @@
+/dist
+/target
+# Local Claude Code settings and skills from other projects
+/.claude/
+.DS_Store

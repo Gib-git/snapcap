@@ -1,0 +1,24 @@
+[Desktop Entry]
+Type=Application
+Name=SnapCap
+GenericName=Screenshot & Screen Recorder
+Comment=Take screenshots and record your screen
+Exec=snapcap
+Icon=snapcap
+Terminal=false
+Categories=Utility;Graphics;Recorder;
+Keywords=screenshot;screen;record;capture;gif;
+StartupWMClass=snapcap
+Actions=ShotRegion;ShotScreen;RecordRegion;
+
+[Desktop Action ShotRegion]
+Name=Capture Region
+Exec=snapcap --shot region
+
+[Desktop Action ShotScreen]
+Name=Capture Screen
+Exec=snapcap --shot screen
+
+[Desktop Action RecordRegion]
+Name=Record Region
+Exec=snapcap --record region

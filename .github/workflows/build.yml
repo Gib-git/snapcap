@@ -1,0 +1,102 @@
+name: build
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            name: macos
+          - os: windows-latest
+            name: windows
+          - os: ubuntu-22.04
+            name: linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install NASM (Windows)
+        if: matrix.name == 'windows'
+        uses: ilammy/setup-nasm@v1
+      - name: Install build dependencies (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nasm clang libclang-dev pkg-config \
+            libxcb1-dev libxcb-randr0-dev libxcb-shm0-dev libxcb-xfixes0-dev \
+            libpipewire-0.3-dev libspa-0.2-dev libwayland-dev libegl-dev libgbm-dev libdrm-dev \
+            libasound2-dev libxkbcommon-dev libdbus-1-dev
+
+      - name: Lint
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Test
+        run: cargo test --locked
+
+      - name: Package (macOS)
+        if: matrix.name == 'macos'
+        run: scripts/bundle-macos.sh --universal
+      - name: Package (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: scripts/build-windows.ps1
+      - name: Package (Linux)
+        if: matrix.name == 'linux'
+        run: scripts/build-linux.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snapcap-${{ matrix.name }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.deb
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: SnapCap ${{ github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: artifacts/*
+          body: |
+            | OS | Download |
+            |---|---|
+            | macOS 13+ (Apple silicon + Intel) | `SnapCap-*-macos-universal.dmg` |
+            | Windows 10/11 | `SnapCap-*-windows-x64.zip` |
+            | Ubuntu 22.04+ | `snapcap_*_amd64.deb` or `snapcap-*-linux-amd64.tar.gz` |
+
+            These builds aren't signed with a paid certificate yet. On macOS, if it won't open, use
+            *System Settings → Privacy & Security → Open Anyway* (or run
+            `xattr -dr com.apple.quarantine /Applications/SnapCap.app`). On Windows, choose
+            *More info → Run anyway* in SmartScreen.
