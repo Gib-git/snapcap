@@ -30,6 +30,7 @@ rm -rf "$DIST" && mkdir -p "$DIST"
 ROOT="$DIST/snapcap_${VERSION}_${ARCH}"
 install -Dm755 "$BIN" "$ROOT/usr/bin/snapcap"
 install -Dm644 packaging/linux/snapcap.desktop "$ROOT/usr/share/applications/snapcap.desktop"
+install -Dm644 LICENSE LICENSE-EXCEPTION -t "$ROOT/usr/share/doc/snapcap/"
 for s in 16 32 64 128 256 512; do
   install -Dm644 "assets/icon_${s}.png" "$ROOT/usr/share/icons/hicolor/${s}x${s}/apps/snapcap.png"
 done

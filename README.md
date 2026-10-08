@@ -201,9 +201,19 @@ docs/screenshots/  images used in this README
 scripts/           per-OS build and packaging scripts
 ```
 
-## Licensing note
+## License
+
+SnapCap is free software, licensed under the
+[GNU General Public License v3.0 or later](LICENSE).
+
+SnapCap compiles in the Fraunhofer FDK AAC encoder for MP4 audio. The FDK AAC licence isn't
+compatible with the GPL on its own, so SnapCap's licence includes an
+[additional permission](LICENSE-EXCEPTION) (GPLv3 section 7) that allows the two to be
+distributed together.
+
+### Patents
 
 H.264 and AAC are patented formats. SnapCap compiles OpenH264 and FDK-AAC from source.
-Cisco's free H.264 patent licence only covers Cisco's own prebuilt binaries. That's fine
-for personal and internal use. Commercial distribution needs a licensing review, and GIF
-output is unaffected either way.
+Cisco's free H.264 patent licence only covers Cisco's own prebuilt binaries, and the FDK AAC
+licence grants no patent rights. That's fine for personal and internal use, but commercial
+distribution needs a licensing review. GIF output is unaffected either way.

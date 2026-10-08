@@ -30,6 +30,7 @@ else
   SUFFIX=$(uname -m)
 fi
 
+cp LICENSE LICENSE-EXCEPTION "$APP/Contents/Resources/"
 sed "s/__VERSION__/$VERSION/g" packaging/macos/Info.plist > "$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist" >/dev/null
 

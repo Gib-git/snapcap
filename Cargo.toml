@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.95"
 description = "Cross-platform screenshot and screen recorder"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [dependencies]
 eframe = { version = "0.36", default-features = false, features = ["glow", "default_fonts", "wayland", "x11"] }

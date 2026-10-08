@@ -18,5 +18,5 @@ $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
 New-Item -ItemType Directory -Force dist | Out-Null
 Copy-Item target\release\snapcap.exe dist\SnapCap.exe -Force
-Compress-Archive -Force -Path dist\SnapCap.exe -DestinationPath "dist\SnapCap-$version-windows-$arch.zip"
+Compress-Archive -Force -Path dist\SnapCap.exe, LICENSE, LICENSE-EXCEPTION -DestinationPath "dist\SnapCap-$version-windows-$arch.zip"
 Get-ChildItem dist | Format-Table Name, Length
