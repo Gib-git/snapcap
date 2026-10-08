@@ -20,11 +20,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15
             name: macos
           - os: windows-latest
             name: windows
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             name: linux
     runs-on: ${{ matrix.os }}
     steps:
@@ -94,7 +94,7 @@ jobs:
             |---|---|
             | macOS 13+ (Apple silicon + Intel) | `SnapCap-*-macos-universal.dmg` |
             | Windows 10/11 | `SnapCap-*-windows-x64.zip` |
-            | Ubuntu 22.04+ | `snapcap_*_amd64.deb` or `snapcap-*-linux-amd64.tar.gz` |
+            | Ubuntu 24.04+ | `snapcap_*_amd64.deb` or `snapcap-*-linux-amd64.tar.gz` |
 
             These builds aren't signed with a paid certificate yet. On macOS, if it won't open, use
             *System Settings → Privacy & Security → Open Anyway* (or run

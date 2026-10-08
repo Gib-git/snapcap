@@ -21,7 +21,7 @@ Grab the latest build from the [Releases page](../../releases/latest):
 |---|---|
 | macOS 13+ (Apple silicon and Intel) | `SnapCap-<version>-macos-universal.dmg` |
 | Windows 10/11 | `SnapCap-<version>-windows-x64.zip` |
-| Ubuntu 22.04+ | `snapcap_<version>_amd64.deb` or `snapcap-<version>-linux-amd64.tar.gz` |
+| Ubuntu 24.04+ | `snapcap_<version>_amd64.deb` or `snapcap-<version>-linux-amd64.tar.gz` |
 
 The builds aren't signed with a paid Apple or Microsoft certificate yet, so the first launch
 needs one extra step:
@@ -107,7 +107,7 @@ You need Rust 1.95+ (`rustup`). Each script below writes its output to `dist/`.
 |---|---|---|---|
 | macOS 13+ | `scripts/bundle-macos.sh` (add `--universal` for Intel + Apple silicon) | `SnapCap.app` and a DMG | Xcode Command Line Tools (the ScreenCaptureKit bridge is compiled with Swift) |
 | Windows 10/11 | `powershell scripts\build-windows.ps1` | `SnapCap.exe` and a zip | Visual Studio Build Tools (C++), [NASM](https://nasm.us) for SIMD-accelerated encoding |
-| Ubuntu 22.04+ | `scripts/build-linux.sh --install-deps` | `.deb` and `.tar.gz` | The script installs everything it needs with apt |
+| Ubuntu 24.04+ | `scripts/build-linux.sh --install-deps` | `.deb` and `.tar.gz` | The script installs everything it needs with apt |
 
 For development, `cargo run` starts the app and `cargo test` runs the test suite.
 
