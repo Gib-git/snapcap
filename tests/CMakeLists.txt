@@ -17,3 +17,9 @@ add_executable(snapcap_core_tests
 target_link_libraries(snapcap_core_tests PRIVATE snapcap_core doctest ZLIB::ZLIB)
 snapcap_warnings(snapcap_core_tests)
 add_test(NAME core COMMAND snapcap_core_tests)
+
+if(APPLE)
+  add_executable(snapcap_mac_tests macos/mac_tests.mm)
+  target_link_libraries(snapcap_mac_tests PRIVATE snapcap_mac doctest "-framework ImageIO")
+  add_test(NAME macos COMMAND snapcap_mac_tests)
+endif()

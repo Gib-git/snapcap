@@ -31,6 +31,10 @@ include(cmake/Dependencies.cmake)
 
 add_subdirectory(core)
 
+if(APPLE)
+  add_subdirectory(platform/macos)
+endif()
+
 if(SNAPCAP_TESTS)
   enable_testing()
   add_subdirectory(tests)
