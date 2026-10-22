@@ -95,6 +95,7 @@ NSCursor* resize_cursor(const Edges& e) {
                         image:(CGImageRef)image
                        pixels:(NSSize)pixels;
 - (void)refreshToolbar;
+- (void)detach;
 @end
 
 @implementation SNCOverlayView {
@@ -159,19 +160,29 @@ NSCursor* resize_cursor(const Edges& e) {
   return NSMakeRect(r.x / s, r.y / s, r.width / s, r.height / s);
 }
 
+// The model, or null once the selector is gone: a view can outlive it and still receive a
+// queued mouse, key or cursor event.
+- (SelectionModel*)model {
+  SNCSelector* selector = _selector;
+  return selector != nil ? selector.model : nullptr;
+}
+
 - (NSPoint)local:(NSEvent*)event {
   return [self convertPoint:event.locationInWindow fromView:nil];
 }
 
 - (std::optional<NSRect>)selectionHere {
-  auto sel = _selector.model->selection();
+  SelectionModel* m = [self model];
+  if (m == nullptr) return std::nullopt;
+  auto sel = m->selection();
   if (!sel || sel->first != _index) return std::nullopt;
   return [self toPt:sel->second];
 }
 
 // ---- input
 - (void)mouseDown:(NSEvent*)event {
-  SelectionModel* m = _selector.model;
+  SelectionModel* m = [self model];
+  if (m == nullptr) return;
   if (event.clickCount == 2) {
     [_selector handle:m->double_click(_index)];
     return;
@@ -183,13 +194,17 @@ NSCursor* resize_cursor(const Edges& e) {
 - (void)mouseDragged:(NSEvent*)event {
   NSPoint p = [self local:event];
   _hover = p;
-  _selector.model->drag(_index, [self toPx:p]);
+  SelectionModel* m = [self model];
+  if (m == nullptr) return;
+  m->drag(_index, [self toPx:p]);
   [self updateCursor];
   [_selector redrawAll];
 }
 
 - (void)mouseUp:(NSEvent*)event {
-  auto outcome = _selector.model->release(_index, [self toPx:[self local:event]]);
+  SelectionModel* m = [self model];
+  if (m == nullptr) return;
+  auto outcome = m->release(_index, [self toPx:[self local:event]]);
   [_selector redrawAll];
   [_selector handle:outcome];
 }
@@ -216,7 +231,8 @@ NSCursor* resize_cursor(const Edges& e) {
 }
 
 - (void)updateCursor {
-  SelectionModel* m = _selector.model;
+  SelectionModel* m = [self model];
+  if (m == nullptr) return;
   if (m->dragging() == Kind::Move) return [NSCursor.closedHandCursor set];
   if (m->dragging() != Kind::None || !_hover) return [NSCursor.crosshairCursor set];
   Edges e;
@@ -228,17 +244,26 @@ NSCursor* resize_cursor(const Edges& e) {
 }
 
 - (void)keyDown:(NSEvent*)event {
+  SelectionModel* m = [self model];
+  if (m == nullptr) return;
   switch (event.keyCode) {
-    case kVK_Escape: return [_selector handle:_selector.model->key_escape()];
+    case kVK_Escape: return [_selector handle:m->key_escape()];
     case kVK_Return:
-    case kVK_ANSI_KeypadEnter: return [_selector handle:_selector.model->key_enter(_index)];
+    case kVK_ANSI_KeypadEnter: return [_selector handle:m->key_enter(_index)];
     default: return;
   }
 }
 
 // ---- record toolbar
+// Stops receiving pointer and cursor events once the overlay closes.
+- (void)detach {
+  for (NSTrackingArea* t in [self.trackingAreas copy]) [self removeTrackingArea:t];
+  _hover.reset();
+}
+
 - (void)refreshToolbar {
-  SelectionModel* m = _selector.model;
+  SelectionModel* m = [self model];
+  if (m == nullptr) return;
   auto sel = [self selectionHere];
   BOOL show = m->purpose() == SelectionPurpose::Record && sel && m->dragging() == Kind::None;
   if (!show) {
@@ -291,16 +316,18 @@ NSCursor* resize_cursor(const Edges& e) {
 }
 
 - (void)startRecording:(id)sender {
-  [_selector handle:_selector.model->confirm_current()];
+  if (SelectionModel* m = [self model]) [_selector handle:m->confirm_current()];
 }
 
 - (void)wholeScreen:(id)sender {
-  _selector.model->select_full(_index);
+  SelectionModel* m = [self model];
+  if (m == nullptr) return;
+  m->select_full(_index);
   [_selector redrawAll];
 }
 
 - (void)cancel:(id)sender {
-  [_selector handle:_selector.model->key_escape()];
+  if (SelectionModel* m = [self model]) [_selector handle:m->key_escape()];
 }
 
 // ---- drawing
@@ -308,7 +335,8 @@ NSCursor* resize_cursor(const Edges& e) {
   NSRect b = self.bounds;
   [_image drawInRect:b fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1.0 respectFlipped:YES hints:nil];
 
-  SelectionModel* m = _selector.model;
+  SelectionModel* m = [self model];
+  if (m == nullptr) return;
   auto sel = [self selectionHere];
   NSColor* dim = [NSColor colorWithWhite:0 alpha:0.45];
   if (sel) {
@@ -504,6 +532,7 @@ NSCursor* resize_cursor(const Edges& e) {
   // The windows are released with the selector, which the host keeps alive until the
   // current event (possibly one of our own mouse handlers) has finished.
   _finished = YES;
+  for (SNCOverlayView* v in _views) [v detach];
   for (NSWindow* w in _windows) [w orderOut:nil];
   [NSCursor.arrowCursor set];
 }

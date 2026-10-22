@@ -89,8 +89,10 @@ constexpr double kCardRadius = 14;
 
 - (void)mouseMoved:(NSEvent*)event {
   // Keep it on screen while the user is looking at it.
-  [self.panel extendBy:2];
-  BOOL over = [self.panel notice].path && NSPointInRect([self convertPoint:event.locationInWindow fromView:nil],
+  SNCNoticePanel* panel = self.panel;
+  if (panel == nil) return;  // a queued event after the panel is gone
+  [panel extendBy:2];
+  BOOL over = [panel notice].path && NSPointInRect([self convertPoint:event.locationInWindow fromView:nil],
                                                         [self revealRect]);
   if (over != self.revealHovered) {
     self.revealHovered = over;
@@ -109,7 +111,9 @@ constexpr double kCardRadius = 14;
 
 - (void)mouseDragged:(NSEvent*)event {
   if (!_mouseDown || self.dragging) return;
-  const auto& path = [self.panel notice].path;
+  SNCNoticePanel* panel = self.panel;
+  if (panel == nil) return;
+  const auto& path = [panel notice].path;
   if (!path) return;
   NSPoint p = event.locationInWindow;
   if (std::hypot(p.x - _downAt.x, p.y - _downAt.y) < 3) return;
@@ -140,10 +144,12 @@ constexpr double kCardRadius = 14;
   if (!_mouseDown) return;
   _mouseDown = NO;
   NSPoint p = [self convertPoint:event.locationInWindow fromView:nil];
-  if ([self.panel notice].path && self.hovering && NSPointInRect(p, [self revealRect])) {
-    [self.panel revealClicked];
+  SNCNoticePanel* panel = self.panel;
+  if (panel == nil) return;
+  if ([panel notice].path && self.hovering && NSPointInRect(p, [self revealRect])) {
+    [panel revealClicked];
   } else {
-    [self.panel viewClicked];
+    [panel viewClicked];
   }
 }
 
@@ -161,7 +167,9 @@ constexpr double kCardRadius = 14;
 }
 
 - (void)drawRect:(NSRect)dirty {
-  const Notice& n = [self.panel notice];
+  SNCNoticePanel* panel = self.panel;
+  if (panel == nil) return;
+  const Notice& n = [panel notice];
   NSRect card = [self cardRect];
   NSBezierPath* shape = [NSBezierPath bezierPathWithRoundedRect:card xRadius:kCardRadius yRadius:kCardRadius];
   [NSColor.windowBackgroundColor setFill];
@@ -173,17 +181,17 @@ constexpr double kCardRadius = 14;
   BOOL error = n.kind == NoticeKind::Error;
   NSColor* accent = error ? NSColor.systemRedColor : NSColor.controlAccentColor;
   NSRect thumb = [self thumbRect];
-  if (self.panel.thumbnail != nil) {
+  if (panel.thumbnail != nil) {
     NSBezierPath* clip = [NSBezierPath bezierPathWithRoundedRect:thumb xRadius:6 yRadius:6];
     [NSColor.underPageBackgroundColor setFill];
     [clip fill];
-    NSSize ts = self.panel.thumbnail.size;
+    NSSize ts = panel.thumbnail.size;
     double fit = std::min(NSWidth(thumb) / ts.width, NSHeight(thumb) / ts.height);
     NSRect r = NSMakeRect(NSMidX(thumb) - ts.width * fit / 2, NSMidY(thumb) - ts.height * fit / 2, ts.width * fit,
                           ts.height * fit);
     [NSGraphicsContext saveGraphicsState];
     [clip addClip];
-    [self.panel.thumbnail drawInRect:r fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0
+    [panel.thumbnail drawInRect:r fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0
                      respectFlipped:YES
                               hints:@{NSImageHintInterpolation : @(NSImageInterpolationHigh)}];
     [NSGraphicsContext restoreGraphicsState];

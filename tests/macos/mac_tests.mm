@@ -325,6 +325,36 @@ TEST_CASE("region selector: drag, adjust and confirm a recording area") {
   CHECK_FALSE(w.visible);
 }
 
+
+TEST_CASE("region selector: events reaching an overlay after its selector is gone are ignored") {
+  // Regression: a queued cursor or mouse event used to call into a released selector.
+  auto shots = fake_shots();
+  NSWindow* w = nil;
+  NSView* v = nil;
+  @autoreleasepool {
+    SNCSelector* sel = [[SNCSelector alloc] initWithPurpose:SelectionPurpose::Record
+                                                      shots:shots
+                                                      focus:0
+                                                       done:[](std::optional<Selection>) {}];
+    [sel show];
+    w = overlay_window(0);
+    v = w.contentView;
+    [sel close];
+  }
+  bool has_view = v != nil;
+  REQUIRE(has_view);
+  send_mouse(v, NSEventTypeMouseMoved, NSMakePoint(300, 200));
+  send_mouse(v, NSEventTypeLeftMouseDown, NSMakePoint(300, 200));
+  send_mouse(v, NSEventTypeLeftMouseDragged, NSMakePoint(400, 300));
+  send_mouse(v, NSEventTypeLeftMouseUp, NSMakePoint(400, 300));
+  send_key(v, 36);
+  [v cursorUpdate:[NSEvent enterExitEventWithType:NSEventTypeCursorUpdate location:NSZeroPoint modifierFlags:0
+                                        timestamp:0 windowNumber:w.windowNumber context:nil eventNumber:0
+                                   trackingNumber:0 userData:nullptr]];
+  [v displayIfNeeded];
+  CHECK(v.trackingAreas.count == 0);
+}
+
 TEST_CASE("region selector: Escape cancels and a click takes the whole screen") {
   auto shots = fake_shots();
   {
