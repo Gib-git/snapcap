@@ -15,24 +15,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  # macOS: the C++ app.
+  macos:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: brew install ninja
+      - name: Test (AddressSanitizer + UndefinedBehaviorSanitizer)
+        run: |
+          cmake --preset asan
+          cmake --build --preset asan
+          ctest --preset asan
+      - name: Test (ThreadSanitizer)
+        run: |
+          cmake --preset tsan
+          cmake --build --preset tsan
+          ctest --preset tsan
+      - name: Package
+        run: scripts/bundle-macos.sh --universal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: snapcap-macos
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  # Windows and Linux still ship the archived Rust app until their C++ backends land.
+  rust:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-26
-            name: macos
           - os: windows-latest
             name: windows
           - os: ubuntu-24.04
             name: linux
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: archive/rust
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: archive/rust
 
       - name: Install NASM (Windows)
         if: matrix.name == 'windows'
@@ -51,9 +80,6 @@ jobs:
       - name: Test
         run: cargo test --locked
 
-      - name: Package (macOS)
-        if: matrix.name == 'macos'
-        run: scripts/bundle-macos.sh --universal
       - name: Package (Windows)
         if: matrix.name == 'windows'
         shell: pwsh
@@ -66,7 +92,6 @@ jobs:
         with:
           name: snapcap-${{ matrix.name }}
           path: |
-            dist/*.dmg
             dist/*.zip
             dist/*.deb
             dist/*.tar.gz
@@ -74,7 +99,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [macos, rust]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -92,7 +117,7 @@ jobs:
           body: |
             | OS | Download |
             |---|---|
-            | macOS 13+ (Apple silicon + Intel) | `SnapCap-*-macos-universal.dmg` |
+            | macOS 13.3+ (Apple silicon + Intel) | `SnapCap-*-macos-universal.dmg` |
             | Windows 10/11 | `SnapCap-*-windows-x64.zip` |
             | Ubuntu 24.04+ | `snapcap_*_amd64.deb` or `snapcap-*-linux-amd64.tar.gz` |
 

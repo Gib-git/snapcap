@@ -1,9 +1,9 @@
 # SnapCap
 
 A small, fast screenshot and screen-recording app for **macOS, Windows and Ubuntu**.
-It's a single native binary (about 8 MB). The H.264 and AAC encoders, GIF encoder,
-tray icon and UI are all compiled in, so there's nothing else to install: no ffmpeg,
-no runtimes and no redistributables.
+It's a small native app: on macOS it's written in C++ with an AppKit UI (about 2 MB), and
+the Windows and Linux builds come from the original Rust version. There's nothing else to
+install: no ffmpeg, no runtimes and no redistributables.
 
 Captures are saved to **`~/Desktop/screenshots`** by default. The folder is created
 automatically, and you can change it in Settings.
@@ -19,7 +19,7 @@ Grab the latest build from the [Releases page](../../releases/latest):
 
 | OS | File |
 |---|---|
-| macOS 13+ (Apple silicon and Intel) | `SnapCap-<version>-macos-universal.dmg` |
+| macOS 13.3+ (Apple silicon and Intel) | `SnapCap-<version>-macos-universal.dmg` |
 | Windows 10/11 | `SnapCap-<version>-windows-x64.zip` |
 | Ubuntu 24.04+ | `snapcap_<version>_amd64.deb` or `snapcap-<version>-linux-amd64.tar.gz` |
 
@@ -45,7 +45,8 @@ needs one extra step:
     up in your recordings. On Linux the outline sits just outside the recorded area, but the
     control bar will appear in full-screen recordings.
 - **Lives in the menu bar / system tray.** Closing the window keeps SnapCap running.
-  - After each capture, a notice with a thumbnail appears. Click it to open the file.
+  - After each capture, a notice with a thumbnail appears in the bottom-right corner of the
+    screen you captured, just above the Dock. Click it to open the file.
 - **Drag and drop captures anywhere.** Drag the notice that appears after a capture and drop
   it wherever a file can go:
   - a chat (Discord, Slack, Teams), an email, or any upload area or text box in a browser
@@ -65,6 +66,8 @@ needs one extra step:
   bind keys in any desktop environment.
 
 ### Screenshots
+
+The macOS app:
 
 | Main window | Settings |
 |---|---|
@@ -101,23 +104,42 @@ When recording a region, you can move or resize the selection before pressing
 
 ## Building
 
-You need Rust 1.95+ (`rustup`). Each script below writes its output to `dist/`.
+SnapCap is C++23 built with CMake. Each script below writes its output to `dist/`.
 
 | OS | Command | Output | Build requirements |
 |---|---|---|---|
-| macOS 13+ | `scripts/bundle-macos.sh` (add `--universal` for Intel + Apple silicon) | `SnapCap.app` and a DMG | Xcode Command Line Tools (the ScreenCaptureKit bridge is compiled with Swift) |
-| Windows 10/11 | `powershell scripts\build-windows.ps1` | `SnapCap.exe` and a zip | Visual Studio Build Tools (C++), [NASM](https://nasm.us) for SIMD-accelerated encoding |
-| Ubuntu 24.04+ | `scripts/build-linux.sh --install-deps` | `.deb` and `.tar.gz` | The script installs everything it needs with apt |
+| macOS 13.3+ | `scripts/bundle-macos.sh` (add `--universal` for Intel + Apple silicon) | `SnapCap.app` and a DMG | Xcode Command Line Tools, CMake 3.24+, Ninja (`brew install cmake ninja`) |
+| Windows 10/11 | `powershell archive\rust\scripts\build-windows.ps1` | `SnapCap.exe` and a zip | The archived Rust app: Rust, Visual Studio Build Tools (C++), [NASM](https://nasm.us) |
+| Ubuntu 24.04+ | `archive/rust/scripts/build-linux.sh --install-deps` | `.deb` and `.tar.gz` | The archived Rust app: the script installs everything it needs with apt |
 
-For development, `cargo run` starts the app and `cargo test` runs the test suite.
-
-On every push, `.github/workflows/build.yml` lints, tests and packages the app on all three
-operating systems. Pushing a tag such as `v0.1.0` also publishes a GitHub release with the
-macOS DMG, the Windows zip and the Linux `.deb`/`.tar.gz` attached:
+For development on macOS:
 
 ```sh
-git tag v0.1.0 && git push origin v0.1.0
+cmake --preset debug && cmake --build --preset debug   # build/debug/SnapCap.app
+ctest --preset debug                                   # unit and macOS integration tests
+cmake --preset asan && cmake --build --preset asan && ctest --preset asan   # with sanitizers
+scripts/smoke-macos.sh                                 # end-to-end: screenshots and a recording
 ```
+
+macOS ties the Screen Recording permission to the app's signature. Ad hoc signing (the
+default) changes with every build, so for day-to-day development configure with a stable
+identity, e.g. `cmake --preset debug -DSNAPCAP_SIGN_IDENTITY="Apple Development: …"`.
+Logs go to `~/Library/Logs/SnapCap/snapcap.log`.
+
+On every push, `.github/workflows/build.yml` tests the macOS app under AddressSanitizer,
+UndefinedBehaviorSanitizer and ThreadSanitizer, and packages all three operating systems.
+Pushing a tag such as `v0.2.0` also publishes a GitHub release with the macOS DMG, the
+Windows zip and the Linux `.deb`/`.tar.gz` attached:
+
+```sh
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+### The Rust version
+
+SnapCap was first written in Rust. That version lives on in [`archive/rust/`](archive/rust)
+and still builds there (`cd archive/rust && cargo build`). Windows and Linux releases come
+from it until their C++ backends are finished; macOS releases come from the C++ app.
 
 ## Platform notes
 
@@ -125,9 +147,9 @@ git tag v0.1.0 && git push origin v0.1.0
   - The first capture asks for *Screen & System Audio Recording* permission. Enable
     SnapCap in System Settings, then reopen it. The app shows a banner with a button
     until permission is granted.
-  - Recording uses ScreenCaptureKit, which does the cropping and scaling on the GPU.
-  - Video is encoded by the hardware H.264 encoder (VideoToolbox). OpenH264 is the fallback.
-  - System audio needs macOS 14.2 or later.
+  - Recording uses ScreenCaptureKit, which does the cropping and scaling on the GPU and
+    captures system audio. AVFoundation encodes H.264 on the hardware encoder and writes the MP4.
+  - The microphone asks for permission the first time you record with it.
   - Dragging a capture out starts a standard AppKit file drag (a file URL with the image as the
     drag preview). Any app that accepts files from Finder accepts it.
 - **Windows:**
@@ -151,54 +173,34 @@ git tag v0.1.0 && git push origin v0.1.0
 
 ## Performance
 
-- The app uses no CPU while idle: it only redraws on input or events, and nothing is polled.
-- Captured frames go through a short bounded queue to an encoder thread.
-  - If the encoder falls behind, frames are dropped rather than buffered.
-  - Timestamps are variable-frame-rate, so audio stays in sync even when frames are dropped.
-- Colour conversion is spread across all cores (about 3 ms for a 4K frame).
-- **Encoding:**
-  - On macOS, H.264 runs on the hardware encoder. Recording 4K uses roughly 10–30% of one
-    core, and recordings default to full resolution.
-  - On Windows and Linux, OpenH264 runs in software, using multiple threads and SIMD (built
-    with NASM). Recordings default to a **1440p maximum** to stay smooth on 4K/5K displays.
-    Choose *Native* in Settings for full resolution.
-  - Either way, output is capped at 3840×2160, the H.264 limit.
+- The app uses no CPU while idle: windows only redraw on input or events, and nothing is polled.
+- **macOS:**
+  - ScreenCaptureKit crops and scales on the GPU and only delivers frames when the screen
+    changes. H.264 runs on the hardware encoder; recording 4K uses a small fraction of one core.
+  - If the encoder falls behind, frames are dropped rather than buffered. Timestamps are
+    variable-frame-rate, so audio stays in sync even when frames are dropped.
+  - Screenshots are PNG-compressed on all cores: a 5K screenshot encodes in about 40 ms.
+  - Output is capped at 3840×2160, the H.264 limit.
 - **GIFs** stay small:
   - Each frame stores only the rectangle that changed, and unchanged pixels are transparent.
   - Flat UI colours are stored exactly rather than approximated.
-- Thumbnails are decoded row by row. Memory freed after large captures is returned to the OS.
-
-`cargo test --release encode_throughput -- --ignored --nocapture` measures encoder
-speed on your machine. On an Apple-silicon Mac, with worst-case content (every pixel
-changing every frame):
-
-| Resolution | OpenH264 (software) | VideoToolbox (hardware) |
-|---|---|---|
-| 1080p | 66 fps | 154 fps |
-| 1440p | 35 fps | 110 fps |
-| 4K | 17 fps | 51 fps |
-
-OpenH264 has no SIMD code for ARM, so the software column is a worst case. x86-64 builds
-with NASM are considerably faster.
+- **Windows and Linux** (the archived Rust app) encode with OpenH264 in software and default
+  to a 1440p maximum; see [`archive/rust`](archive/rust).
 
 ## Project layout
 
 ```
-src/
-  main.rs          CLI, single instance, eframe start-up
-  app.rs           state machine: idle → selecting → countdown → recording → saving
-  capture/         monitor list, screenshots, live frame sources (ScreenCaptureKit / xcap),
-                   cursor compositing for Windows and X11
-  record/          clock, colour conversion, H.264 (OpenH264 + VideoToolbox), MP4 muxer,
-                   AAC audio mixer, GIF writer
-  ui/              theme, widgets, main window, settings, region overlay, recording bar, notices
-  hotkeys.rs       global shortcuts: parse, display, conflicts, live re-registration
-  tray.rs, ipc.rs  tray menu and single-instance command forwarding
-  platform/        per-OS helpers: permissions, window levels, dragging files out
-  icon.rs          app and tray icons drawn in code (`snapcap --export-icons assets`)
-packaging/         Info.plist, .desktop file; Windows resources live in assets/windows
+core/              portable C++: the app state machine, settings, shortcuts, geometry,
+                   region selection, recording clock, audio mixer, PNG and GIF encoders,
+                   icons. No OS APIs; fully unit-tested.
+platform/macos/    AppKit UI (main window, region overlay, recording bar, notice, menu bar),
+                   ScreenCaptureKit capture and recording, global hotkeys
+platform/posix/    single-instance command forwarding over a Unix socket
+tests/             core unit tests (doctest) and macOS integration tests
+archive/rust/      the original Rust app (Windows and Linux builds)
+packaging/         Info.plist, entitlements, .desktop file; Windows resources live in assets/windows
 docs/screenshots/  images used in this README
-scripts/           per-OS build and packaging scripts
+scripts/           packaging and smoke-test scripts
 ```
 
 ## License
