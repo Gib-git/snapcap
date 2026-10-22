@@ -427,7 +427,7 @@ Result<RecordingResult> record_region(VideoFormat format, const std::filesystem:
   spin_until([] { return false; }, 1500ms);
   (*rec)->toggle_pause();
   CHECK((*rec)->paused());
-  spin_until([] { return false; }, 500ms);
+  spin_until([] { return false; }, 1500ms);
   (*rec)->toggle_pause();
   spin_until([] { return false; }, 500ms);
   (*rec)->stop();
@@ -448,8 +448,10 @@ TEST_CASE("recorder: region MP4 has the right size and excludes the paused time"
   REQUIRE_MESSAGE(result.has_value(), (result ? "" : result.error().message));
   CHECK(cfg.out_width == 640);
   CHECK(cfg.out_height == 360);
-  CHECK(result->duration > 1500ms);
-  CHECK(result->duration < 2800ms);  // ~2.5 s wall time minus the 0.5 s pause
+  // 1.5 s recording + 1.5 s paused + 0.5 s recording = 3.5 s of wall time. Excluding the
+  // pause leaves at most 2 s (less ScreenCaptureKit start-up, which is slow on CI).
+  CHECK(result->duration > 500ms);
+  CHECK(result->duration < 2400ms);
   AVURLAsset* asset = [AVURLAsset URLAssetWithURL:mac::file_url(result->path) options:nil];
   NSMutableArray<AVAssetTrack*>* tracks = [NSMutableArray array];
   auto loaded = std::make_shared<std::atomic<bool>>(false);
