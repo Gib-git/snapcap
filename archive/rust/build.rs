@@ -10,10 +10,10 @@ fn main() {
     // Windows: application icon, version info and DPI-aware manifest.
     if target_os == "windows" {
         #[cfg(windows)]
-        embed_resource::compile("assets/windows/snapcap.rc", embed_resource::NONE)
+        embed_resource::compile("../../assets/windows/snapcap.rc", embed_resource::NONE)
             .manifest_optional()
             .expect("embed Windows resources");
     }
-    println!("cargo:rerun-if-changed=assets/windows");
+    println!("cargo:rerun-if-changed=../../assets/windows");
     println!("cargo:rerun-if-changed=build.rs");
 }

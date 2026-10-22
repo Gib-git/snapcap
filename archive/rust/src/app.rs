@@ -482,11 +482,14 @@ impl App {
                 }
             }
         };
-        let (x, y) = crate::ui::desktop_to_points(m.x as f32, m.y as f32);
-        let (w, h) = crate::ui::desktop_to_points(m.width as f32, m.height as f32);
-        let px = x + w - notice::SIZE.x - 16.0;
-        let py = if cfg!(target_os = "macos") { y + 34.0 } else { y + h - notice::SIZE.y - 64.0 };
-        Pos2::new(px, py)
+        // Bottom-right corner of the display, above the Dock or taskbar.
+        let (x, y, w, h, margin) = match crate::platform::work_area(m.x, m.y, m.width, m.height) {
+            Some((x, y, w, h)) => (x as f32, y as f32, w as f32, h as f32, 16.0),
+            None => (m.x as f32, m.y as f32, m.width as f32, m.height as f32, 64.0),
+        };
+        let (x, y) = crate::ui::desktop_to_points(x, y);
+        let (w, h) = crate::ui::desktop_to_points(w, h);
+        Pos2::new(x + w - notice::SIZE.x - 16.0, y + h - notice::SIZE.y - margin)
     }
 
     fn show_error(&mut self, title: &str, detail: &str, monitor: Option<&MonitorInfo>) {

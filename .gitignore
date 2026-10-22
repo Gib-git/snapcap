@@ -1,4 +1,7 @@
+/build
 /dist
+# Cargo output of the archived Rust app
+/archive/rust/target
 /target
 # Local Claude Code settings and skills from other projects
 /.claude/

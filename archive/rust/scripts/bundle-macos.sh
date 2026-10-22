@@ -9,10 +9,12 @@
 # for distribution (then notarize the DMG with `xcrun notarytool`).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# The Rust app is archived in archive/rust; shared assets, packaging and dist/ live at the repo root.
+REPO=../..
 export MACOSX_DEPLOYMENT_TARGET=13.0
 
 VERSION=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
-DIST=dist
+DIST=$REPO/dist
 APP="$DIST/SnapCap.app"
 rm -rf "$APP" "$DIST/SnapCap-$VERSION-macos.dmg"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -30,16 +32,16 @@ else
   SUFFIX=$(uname -m)
 fi
 
-cp LICENSE LICENSE-EXCEPTION "$APP/Contents/Resources/"
-sed "s/__VERSION__/$VERSION/g" packaging/macos/Info.plist > "$APP/Contents/Info.plist"
+cp $REPO/LICENSE $REPO/LICENSE-EXCEPTION "$APP/Contents/Resources/"
+sed "s/__VERSION__/$VERSION/g" $REPO/packaging/macos/Info.plist > "$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist" >/dev/null
 
 # Icon set from the procedurally drawn icons in assets/.
 ICONSET=$(mktemp -d)/SnapCap.iconset
 mkdir -p "$ICONSET"
 for s in 16 32 128 256 512; do
-  cp "assets/icon_${s}.png" "$ICONSET/icon_${s}x${s}.png"
-  cp "assets/icon_$((s * 2)).png" "$ICONSET/icon_${s}x${s}@2x.png"
+  cp "$REPO/assets/icon_${s}.png" "$ICONSET/icon_${s}x${s}.png"
+  cp "$REPO/assets/icon_$((s * 2)).png" "$ICONSET/icon_${s}x${s}@2x.png"
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/SnapCap.icns"
 

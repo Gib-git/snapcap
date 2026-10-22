@@ -8,6 +8,8 @@
 # libraries, OpenGL, ALSA, PipeWire); codecs and the tray are compiled in.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# The Rust app is archived in archive/rust; shared assets, packaging and dist/ live at the repo root.
+REPO=../..
 
 if [[ "${1:-}" == "--install-deps" ]]; then
   SUDO=$([[ $EUID -eq 0 ]] && echo "" || echo sudo)
@@ -23,16 +25,16 @@ cargo build --release --locked
 BIN=target/release/snapcap
 VERSION=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
 ARCH=$(dpkg --print-architecture 2>/dev/null || uname -m)
-DIST=dist
+DIST=$REPO/dist
 rm -rf "$DIST" && mkdir -p "$DIST"
 
 # Shared file tree.
 ROOT="$DIST/snapcap_${VERSION}_${ARCH}"
 install -Dm755 "$BIN" "$ROOT/usr/bin/snapcap"
-install -Dm644 packaging/linux/snapcap.desktop "$ROOT/usr/share/applications/snapcap.desktop"
-install -Dm644 LICENSE LICENSE-EXCEPTION -t "$ROOT/usr/share/doc/snapcap/"
+install -Dm644 $REPO/packaging/linux/snapcap.desktop "$ROOT/usr/share/applications/snapcap.desktop"
+install -Dm644 $REPO/LICENSE $REPO/LICENSE-EXCEPTION -t "$ROOT/usr/share/doc/snapcap/"
 for s in 16 32 64 128 256 512; do
-  install -Dm644 "assets/icon_${s}.png" "$ROOT/usr/share/icons/hicolor/${s}x${s}/apps/snapcap.png"
+  install -Dm644 "$REPO/assets/icon_${s}.png" "$ROOT/usr/share/icons/hicolor/${s}x${s}/apps/snapcap.png"
 done
 
 # Portable tarball.

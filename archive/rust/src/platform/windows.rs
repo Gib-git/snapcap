@@ -25,6 +25,11 @@ pub fn float_window(_title: &str) {}
 
 pub fn yield_focus() {}
 
+/// Usable area of a display (excluding taskbars/docks); `None` = unknown, use the full display.
+pub fn work_area(_x: i32, _y: i32, _width: u32, _height: u32) -> Option<(f64, f64, f64, f64)> {
+    None
+}
+
 pub fn is_wayland() -> bool {
     false
 }

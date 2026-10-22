@@ -6,7 +6,7 @@ use objc2::runtime::{AnyObject, NSObject, NSObjectProtocol, ProtocolObject};
 use objc2::{define_class, msg_send, AnyThread, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
     NSApplication, NSApplicationActivationPolicy, NSDragOperation, NSDraggingContext, NSDraggingItem, NSDraggingSession,
-    NSDraggingSource, NSEvent, NSEventModifierFlags, NSEventType, NSImage, NSWindow, NSWindowCollectionBehavior, NSWorkspace,
+    NSDraggingSource, NSEvent, NSEventModifierFlags, NSEventType, NSImage, NSScreen, NSWindow, NSWindowCollectionBehavior, NSWorkspace,
 };
 use objc2_foundation::{NSArray, NSPoint, NSProcessInfo, NSRect, NSSize, NSString, NSURL};
 
@@ -105,6 +105,23 @@ pub fn float_window(title: &str) {
         );
         window.setHidesOnDeactivate(false);
     });
+}
+
+/// The part of the display at `x, y` (top-left-origin desktop points) not covered by the
+/// menu bar or the Dock, in the same coordinates.
+pub fn work_area(x: i32, y: i32, _width: u32, _height: u32) -> Option<(f64, f64, f64, f64)> {
+    let mtm = MainThreadMarker::new()?;
+    let main_h = unsafe { CGDisplayBounds(CGMainDisplayID()) }.size.height;
+    let (x, y) = (x as f64, y as f64);
+    NSScreen::screens(mtm).iter().find_map(|screen| {
+        let f = screen.frame();
+        let top = main_h - (f.origin.y + f.size.height);
+        if (f.origin.x - x).abs() > 1.0 || (top - y).abs() > 1.0 {
+            return None;
+        }
+        let v = screen.visibleFrame();
+        Some((v.origin.x, main_h - (v.origin.y + v.size.height), v.size.width, v.size.height))
+    })
 }
 
 /// Hands keyboard focus back to the app the user was in before the overlay.

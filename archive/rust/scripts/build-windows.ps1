@@ -6,6 +6,8 @@
 # so SnapCap.exe runs on a clean Windows 10/11 without any redistributables.
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
+# The Rust app is archived in archive\rust; LICENSE files and dist\ live at the repo root.
+$repo = Resolve-Path "..\.."
 
 if (-not (Get-Command nasm -ErrorAction SilentlyContinue)) {
     Write-Warning "nasm not found: the H.264 encoder will be built without SIMD and run much slower."
@@ -16,7 +18,8 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $version = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches.Groups[1].Value
 $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
-New-Item -ItemType Directory -Force dist | Out-Null
-Copy-Item target\release\snapcap.exe dist\SnapCap.exe -Force
-Compress-Archive -Force -Path dist\SnapCap.exe, LICENSE, LICENSE-EXCEPTION -DestinationPath "dist\SnapCap-$version-windows-$arch.zip"
-Get-ChildItem dist | Format-Table Name, Length
+$dist = Join-Path $repo "dist"
+New-Item -ItemType Directory -Force $dist | Out-Null
+Copy-Item target\release\snapcap.exe (Join-Path $dist "SnapCap.exe") -Force
+Compress-Archive -Force -Path (Join-Path $dist "SnapCap.exe"), (Join-Path $repo "LICENSE"), (Join-Path $repo "LICENSE-EXCEPTION") -DestinationPath (Join-Path $dist "SnapCap-$version-windows-$arch.zip")
+Get-ChildItem $dist | Format-Table Name, Length
